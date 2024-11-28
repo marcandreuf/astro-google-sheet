@@ -1,0 +1,90 @@
+---
+import { google, Auth } from "googleapis";
+
+async function authenticate(): Promise<Auth.OAuth2Client> {
+  const auth = new google.auth.GoogleAuth({
+    keyFile: import.meta.env.GOOGLE_SHEETS_SERVICE_ACCOUNT_JSON as string,
+    scopes: ["https://www.googleapis.com/auth/spreadsheets"],
+  });
+  return (await auth.getClient()) as Auth.OAuth2Client;
+}
+
+async function appendData(
+  auth: Auth.OAuth2Client,
+  values: (string | number)[][]
+): Promise<void> {
+  try {
+    const sheets = google.sheets({ version: "v4", auth });
+    const result = await sheets.spreadsheets.values.append({
+      spreadsheetId: import.meta.env.GOOGLE_SHEETS_ID as string,
+      range: import.meta.env.WRITE_GOOGLE_SHEETS_RANGE as string,
+      valueInputOption: "RAW",
+      requestBody: { values },
+    });
+    console.log(`${result.data.updates?.updatedCells} cells updated.`);
+  } catch (error) {
+    console.error("Error appending data:", error);
+  }
+}
+
+async function readData(auth: Auth.OAuth2Client) {
+  const sheets = google.sheets({ version: "v4", auth });
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: import.meta.env.GOOGLE_SHEETS_ID as string,
+    range: import.meta.env.READ_GOOGLE_SHEETS_RANGE as string,
+  });
+  const rows = res.data.values;
+  if (!rows || rows.length === 0) {
+    console.log("No data found.");
+    return;
+  }
+  return res;
+}
+
+const auth = await authenticate();
+
+if (Astro.request.method === "POST") {
+  try {
+    const data = await Astro.request.formData();
+    const name = data.get("name") as string;
+    const values: (string | number)[][] = [
+      // ["Name"], // Header row (optional)
+      [name],
+    ];
+    await appendData(auth, values);
+  } catch (error) {
+    if (error instanceof Error) {
+      console.error(error.message);
+    }
+  }
+}
+
+const table = await readData(auth);
+const rows = table?.data.values;
+
+rows?.forEach((row) => {
+  console.log(`${row[0]}`);
+});
+
+export const prerender = false;
+---
+
+<h1>Sample minimal form</h1>
+
+<h2>Input Form</h2>
+<form method="POST">
+  <label>
+    Name:
+    <input type="text" name="name" />
+  </label>
+  <button>Submit</button>
+
+  <h2>Data: </h2>
+  {rows && (
+      <ul>
+        {rows.map((r) => (
+          <li> -- {r[0]} -- </li>
+        ))}
+      </ul>
+    )}
+</form>

@@ -1,0 +1,25 @@
+name: astro-gsheets-dev-env
+
+services:
+
+  web_dev:
+    build:
+      context: .
+      dockerfile: dockerfile-web
+    image: ags-website-dev-img
+    container_name: ags-website-dev-container
+    user: node
+    ports:
+      - "3009:3009"
+    volumes:
+      - ../:/home/node/workspace:cached
+      - ${HOME}/.local/share/pnpm:/home/node/.local/share/pnpm:cached
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "true"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
