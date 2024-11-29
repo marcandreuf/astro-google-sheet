@@ -62,10 +62,6 @@ if (Astro.request.method === "POST") {
 const table = await readData(auth);
 const rows = table?.data.values;
 
-rows?.forEach((row) => {
-  console.log(`${row[0]}`);
-});
-
 export const prerender = false;
 ---
 
